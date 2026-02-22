@@ -1,0 +1,4 @@
+# Ignorer les fichiers lourds
+creditcard.csv
+__pycache__/
+*.pyc
