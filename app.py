@@ -82,7 +82,7 @@ elif menu == "🔮 Prédiction":
 # -------------------------------
 elif menu == "📊 Analyse des données":
     st.title("📊 Exploration et Visualisation des Données")
-    df = pd.read_csv("creditcard.csv")
+    df = pd.read_csv("sample_creditcard.csv")
     st.write("Aperçu des données :")
     st.dataframe(df.head())
 
@@ -116,7 +116,7 @@ elif menu == "📊 Analyse des données":
 # -------------------------------
 elif menu == "📈 Performance du modèle":
     st.title("📈 Performance du Modèle")
-    df = pd.read_csv("creditcard.csv")
+    df = pd.read_csv("sample_creditcard.csv")
     X = df.drop("Class", axis=1)
     y = df["Class"]
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
