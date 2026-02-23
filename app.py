@@ -145,68 +145,96 @@ elif menu == "📈 Performance du modèle":
 # PRÉDICTION PAR FICHIER
 # -------------------------------
 elif menu == "📂 Prédiction par fichier":
-    st.title("🤖 Machine Learning automatique sur votre CSV")
+    st.title("🤖 AutoML & Détection de fraude intelligente")
 
     uploaded_file = st.file_uploader("Importer un fichier CSV", type="csv")
 
     if uploaded_file is not None:
-
         df = pd.read_csv(uploaded_file)
         st.success("Fichier chargé avec succès ✅")
         st.dataframe(df.head())
 
-        # Choix de la variable cible
-        target = st.selectbox("Choisissez la variable cible (à prédire)", df.columns)
+        # Détection automatique d'une colonne fraude
+        fraud_columns = ["fraud", "Fraud", "Class", "is_fraud"]
 
-        if target:
+        detected_fraud_col = None
+        for col in fraud_columns:
+            if col in df.columns:
+                detected_fraud_col = col
+                break
 
-            # Séparer X et y
-            X = df.drop(columns=[target])
-            y = df[target]
+        if detected_fraud_col:
+            st.subheader("💳 Mode Détection de Fraude activé")
+            target = detected_fraud_col
+        else:
+            st.subheader("🧠 Mode AutoML général")
+            target = st.selectbox("Choisissez la variable cible", df.columns)
 
-            # Encodage automatique des variables catégorielles
+        X = df.drop(columns=[target])
+        y = df[target]
+
+        # Vérification
+        if X.shape[1] == 0:
+            st.error("❌ Aucune variable explicative disponible.")
+            st.stop()
+
+        # Encodage automatique
+        if X.select_dtypes(include=["object", "category"]).shape[1] > 0:
             X = pd.get_dummies(X, drop_first=True)
 
-            # Séparer train/test
-            from sklearn.model_selection import train_test_split
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42
+        from sklearn.model_selection import train_test_split
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=0.2, random_state=42
+        )
+
+        # Détection type problème
+        if y.dtype == "object" or y.nunique() < 10:
+
+            from sklearn.ensemble import RandomForestClassifier
+            from sklearn.metrics import (
+                accuracy_score,
+                confusion_matrix,
+                classification_report
             )
 
-            # Choix du modèle
-            model_choice = st.selectbox(
-                "Choisissez le modèle",
-                ["Random Forest", "Logistic Regression"]
-            )
-
-            if model_choice == "Random Forest":
-                from sklearn.ensemble import RandomForestClassifier
-                model = RandomForestClassifier()
-
-            else:
-                from sklearn.linear_model import LogisticRegression
-                model = LogisticRegression(max_iter=1000)
-
-            # Entraînement
+            model = RandomForestClassifier()
             model.fit(X_train, y_train)
-
-            # Prédictions
             y_pred = model.predict(X_test)
 
             st.success("Modèle entraîné avec succès 🎯")
-
-            # Métriques
-            from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 
             acc = accuracy_score(y_test, y_pred)
             st.metric("Accuracy", f"{acc:.2f}")
 
             st.subheader("Matrice de confusion")
-            cm = confusion_matrix(y_test, y_pred)
-            st.write(cm)
+            st.write(confusion_matrix(y_test, y_pred))
 
             st.subheader("Classification Report")
             st.text(classification_report(y_test, y_pred))
+
+            # Si fraude → afficher taux
+            if detected_fraud_col:
+                fraud_rate = (y_pred.sum() / len(y_pred)) * 100
+                st.metric("Taux de fraude détecté (%)", f"{fraud_rate:.2f}")
+
+        else:
+            from sklearn.ensemble import RandomForestRegressor
+            from sklearn.metrics import r2_score, mean_squared_error
+
+            model = RandomForestRegressor()
+            model.fit(X_train, y_train)
+            y_pred = model.predict(X_test)
+
+            r2 = r2_score(y_test, y_pred)
+            mse = mean_squared_error(y_test, y_pred)
+
+            st.metric("R² Score", f"{r2:.2f}")
+            st.metric("MSE", f"{mse:.2f}")
+
+        # Importance des variables
+        st.subheader("📊 Importance des variables")
+        importances = pd.Series(model.feature_importances_, index=X.columns)
+        st.bar_chart(importances.sort_values(ascending=False).head(10))
 
 # -------------------------------
 # À PROPOS
