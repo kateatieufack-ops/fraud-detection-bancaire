@@ -145,22 +145,60 @@ elif menu == "📈 Performance du modèle":
 # PRÉDICTION PAR FICHIER
 # -------------------------------
 elif menu == "📂 Prédiction par fichier":
-    st.title("📁 Prédiction en masse — Import CSV universel")
-    uploaded_file = st.file_uploader("Choisir un fichier CSV", type="csv")
-    if uploaded_file:
-        df_file = pd.read_csv(uploaded_file)
-        st.write("Aperçu du fichier importé :")
-        st.dataframe(df_file.head())
+    st.title("📁 Prédiction universelle sur fichier CSV")
 
-        for col in model_features:
-            if col not in df_file.columns:
-                df_file[col] = 0
-        df_file = df_file[model_features]
+    uploaded_file = st.file_uploader("Importer un fichier CSV", type="csv")
 
-        predictions = model.predict(df_file)
-        df_file["Fraude"] = predictions
-        st.write("Résultats de la détection :")
-        st.dataframe(df_file)
+    if uploaded_file is not None:
+        try:
+            df_file = pd.read_csv(uploaded_file)
+            st.success("Fichier chargé avec succès ✅")
+            st.write("Aperçu du fichier :")
+            st.dataframe(df_file.head())
+
+            # Colonnes attendues par le modèle
+            model_features = ["Time"] + [f"V{i}" for i in range(1,29)] + ["Amount"]
+
+            # 1️⃣ Mettre les noms en format standard
+            df_file.columns = df_file.columns.str.strip()
+
+            # 2️⃣ Ajouter les colonnes manquantes automatiquement
+            for col in model_features:
+                if col not in df_file.columns:
+                    df_file[col] = 0
+
+            # 3️⃣ Garder uniquement les colonnes utiles
+            df_model = df_file[model_features]
+
+            # 4️⃣ Conversion en numérique (évite erreurs)
+            df_model = df_model.apply(pd.to_numeric, errors="coerce")
+
+            # 5️⃣ Remplacer valeurs manquantes
+            df_model = df_model.fillna(0)
+
+            # 6️⃣ Prédictions
+            predictions = model.predict(df_model)
+            probabilities = model.predict_proba(df_model)[:,1]
+
+            # 7️⃣ Ajouter résultats au fichier original
+            df_file["Fraude_prédite"] = predictions
+            df_file["Probabilité_fraude"] = probabilities
+
+            st.success("Prédiction terminée avec succès 🎯")
+
+            st.dataframe(df_file)
+
+            # 📊 Statistiques
+            total_transactions = len(df_file)
+            total_fraudes = predictions.sum()
+            taux_fraude = (total_fraudes / total_transactions) * 100
+
+            st.metric("Transactions analysées", total_transactions)
+            st.metric("Fraudes détectées", total_fraudes)
+            st.metric("Taux de fraude (%)", f"{taux_fraude:.2f}")
+
+        except Exception as e:
+            st.error(f"Erreur lors du traitement : {e}")
 
 # -------------------------------
 # À PROPOS
