@@ -144,7 +144,7 @@ elif menu == "📈 Performance du modèle":
 # -------------------------------
 # PRÉDICTION PAR FICHIER
 # -------------------------------
-elif menu == "📂 Analyse & Modélisation automatique":
+elif menu == "📂 Prédiction par fichier":
     st.title("🤖 Machine Learning automatique sur votre CSV")
 
     uploaded_file = st.file_uploader("Importer un fichier CSV", type="csv")
