@@ -144,61 +144,69 @@ elif menu == "📈 Performance du modèle":
 # -------------------------------
 # PRÉDICTION PAR FICHIER
 # -------------------------------
-elif menu == "📂 Prédiction par fichier":
-    st.title("📁 Prédiction universelle sur fichier CSV")
+elif menu == "📂 Analyse & Modélisation automatique":
+    st.title("🤖 Machine Learning automatique sur votre CSV")
 
     uploaded_file = st.file_uploader("Importer un fichier CSV", type="csv")
 
     if uploaded_file is not None:
-        try:
-            df_file = pd.read_csv(uploaded_file)
-            st.success("Fichier chargé avec succès ✅")
-            st.write("Aperçu du fichier :")
-            st.dataframe(df_file.head())
 
-            # Colonnes attendues par le modèle
-            model_features = ["Time"] + [f"V{i}" for i in range(1,29)] + ["Amount"]
+        df = pd.read_csv(uploaded_file)
+        st.success("Fichier chargé avec succès ✅")
+        st.dataframe(df.head())
 
-            # 1️⃣ Mettre les noms en format standard
-            df_file.columns = df_file.columns.str.strip()
+        # Choix de la variable cible
+        target = st.selectbox("Choisissez la variable cible (à prédire)", df.columns)
 
-            # 2️⃣ Ajouter les colonnes manquantes automatiquement
-            for col in model_features:
-                if col not in df_file.columns:
-                    df_file[col] = 0
+        if target:
 
-            # 3️⃣ Garder uniquement les colonnes utiles
-            df_model = df_file[model_features]
+            # Séparer X et y
+            X = df.drop(columns=[target])
+            y = df[target]
 
-            # 4️⃣ Conversion en numérique (évite erreurs)
-            df_model = df_model.apply(pd.to_numeric, errors="coerce")
+            # Encodage automatique des variables catégorielles
+            X = pd.get_dummies(X, drop_first=True)
 
-            # 5️⃣ Remplacer valeurs manquantes
-            df_model = df_model.fillna(0)
+            # Séparer train/test
+            from sklearn.model_selection import train_test_split
+            X_train, X_test, y_train, y_test = train_test_split(
+                X, y, test_size=0.2, random_state=42
+            )
 
-            # 6️⃣ Prédictions
-            predictions = model.predict(df_model)
-            probabilities = model.predict_proba(df_model)[:,1]
+            # Choix du modèle
+            model_choice = st.selectbox(
+                "Choisissez le modèle",
+                ["Random Forest", "Logistic Regression"]
+            )
 
-            # 7️⃣ Ajouter résultats au fichier original
-            df_file["Fraude_prédite"] = predictions
-            df_file["Probabilité_fraude"] = probabilities
+            if model_choice == "Random Forest":
+                from sklearn.ensemble import RandomForestClassifier
+                model = RandomForestClassifier()
 
-            st.success("Prédiction terminée avec succès 🎯")
+            else:
+                from sklearn.linear_model import LogisticRegression
+                model = LogisticRegression(max_iter=1000)
 
-            st.dataframe(df_file)
+            # Entraînement
+            model.fit(X_train, y_train)
 
-            # 📊 Statistiques
-            total_transactions = len(df_file)
-            total_fraudes = predictions.sum()
-            taux_fraude = (total_fraudes / total_transactions) * 100
+            # Prédictions
+            y_pred = model.predict(X_test)
 
-            st.metric("Transactions analysées", total_transactions)
-            st.metric("Fraudes détectées", total_fraudes)
-            st.metric("Taux de fraude (%)", f"{taux_fraude:.2f}")
+            st.success("Modèle entraîné avec succès 🎯")
 
-        except Exception as e:
-            st.error(f"Erreur lors du traitement : {e}")
+            # Métriques
+            from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+            acc = accuracy_score(y_test, y_pred)
+            st.metric("Accuracy", f"{acc:.2f}")
+
+            st.subheader("Matrice de confusion")
+            cm = confusion_matrix(y_test, y_pred)
+            st.write(cm)
+
+            st.subheader("Classification Report")
+            st.text(classification_report(y_test, y_pred))
 
 # -------------------------------
 # À PROPOS
